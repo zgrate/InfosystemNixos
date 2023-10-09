@@ -5,7 +5,6 @@ import threading
 from subprocess import Popen
 from time import sleep
 
-
 IP_ADDRESS = os.environ["SCREEN_IP"]
 PASSPHRASE = os.environ["SCREEN_PASSPHRASE"]
 
@@ -14,8 +13,7 @@ SCREEN_DETAILS = 'screen/'
 mapping_commands = {
 }
 
-
-#Global Variables
+# Global Variables
 interrupt = True
 last_response = None
 current_running_process = None
