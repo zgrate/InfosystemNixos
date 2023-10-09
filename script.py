@@ -5,19 +5,19 @@ import threading
 from subprocess import Popen
 from time import sleep
 
-mapping_commands = {
-    #   'mpv': './mpv_exe/mpv.exe'
-}
 
 IP_ADDRESS = os.environ["SCREEN_IP"]
 PASSPHRASE = os.environ["SCREEN_PASSPHRASE"]
 
 SCREEN_DETAILS = 'screen/'
 
+mapping_commands = {
+}
+
+
+#Global Variables
 interrupt = True
-
 last_response = None
-
 current_running_process = None
 
 
@@ -42,15 +42,18 @@ class RunningProcess:
     def _task_process(self):
         print("starting", self.exec_args)
         while not self.terminated:
-            if not self.process:
-                self.process = Popen(self.exec_args)
+            try:
+                if not self.process:
+                    self.process = Popen(self.exec_args)
 
-            error_code = (self.process.poll())
-            if error_code is not None:
-                if not self.terminated and self.repeat_if_dead:
-                    print("starting again")
-                    self.process = None
-
+                error_code = (self.process.poll())
+                if error_code is not None:
+                    if not self.terminated and self.repeat_if_dead:
+                        print("starting again")
+                        self.process = None
+            except Exception as ex:
+                print("We have an error", ex)
+                pass
             sleep(1)
 
     def spawn_process_keep_alive(self):
@@ -61,9 +64,15 @@ class RunningProcess:
 def request_status():
     try:
         res = requests.get(build_address("screen"), timeout=5)
-        return res
-    except:
-        print("EX")
+        if res.status_code == 200:
+            return res
+        else:
+            print(res.content)
+            return None
+    except (KeyboardInterrupt, SystemExit) as ex:
+        raise ex
+    except Exception as ex:
+        print("Exception", ex)
         return None
 
 
@@ -86,24 +95,10 @@ while interrupt:
         if res:
             res_json = res.json()
             if last_response != res_json:
-                print("new command")
                 last_response = res_json
                 execute_command()
 
         sleep(5)
-    except KeyError:
+    except (KeyboardInterrupt, SystemExit) as ex:
+        print("Exiting! Thanks for watching!")
         interrupt = False
-
-# MPV_EXE = './mpv_exe/mpv.exe'
-#
-# ARGS = '--profile=low-latency -fs --stream-lavf-o=rw_timeout=3000000 --no-terminal --no-input-cursor -osc=no --network-timeout=2 rtmp://stream.vrcdn.live/live/furxmas'
-#
-#
-# process = RunningProcess(MPV_EXE, ARGS)
-# process.spawn_process_keep_alive()
-#
-#
-#
-# sleep(100)
-# process.terminate()
-# sleep(10)
