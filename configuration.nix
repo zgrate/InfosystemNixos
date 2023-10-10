@@ -9,6 +9,13 @@ let
     SCREEN_IP = "";
     SCREEN_PASSPHRASE = "";
     ZERO_TIER_NETWORK = "";
+    KIOSK_HASHED_PASSWORD = "";
+
+    NETWORK_CONFIGURATION = {
+        "Hausmeerschweichen" = {
+           psk = "1234567890abcde";
+        };
+    };
 
     screenPythonEnv = pkgs.buildEnv {
       name = "screen-python-envs";
@@ -29,12 +36,7 @@ in
   };
 
 
-  networking.wireless.networks =
-  {
-    "Hausmeerschweichen" = {
-       psk = "1234567890abcde";
-    };
-  };
+  networking.wireless.networks = NETWORK_CONFIGURATION;
 
 #  services.cage.program = "${pkgs.firefox}/bin/firefox -kiosk http://screen.futerkon.pl/";
 
@@ -45,7 +47,7 @@ in
     isNormalUser = true;
     description = "Kioks user";
     extraGroups = [ "wheel" ];
-    hashedPassword = "";
+    hashedPassword = KIOSK_HASHED_PASSWORD;
     uid = 1000;
   };
 
