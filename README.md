@@ -8,7 +8,7 @@ This is public repository with script starting up in Cage environment
 # Installation Instruction
 1. Install Nixos as a clean installation with internet
 2. Type in ``nixos-shell -p git`` to open shell with git
-3. ``git@github.com:zgrate/InfosystemNixos.git``
+3. ``git clone https://github.com/zgrate/InfosystemNixos.git``
 4. ``exit``
 5. ``cd InfosystemNixos``
 6. ``chmod +x *.sh``
