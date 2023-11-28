@@ -35,62 +35,55 @@ in
     SCREEN_PASSPHRASE = SCREEN_PASSPHRASE;
   };
 
-
-  networking.wireless.networks = NETWORK_CONFIGURATION;
-
-#  services.cage.program = "${pkgs.firefox}/bin/firefox -kiosk http://screen.futerkon.pl/";
-
-  services.cage.program = "${screenPythonEnv}/bin/python /usr/script.py";
-
-
-   users.users.kiosk = {
-    isNormalUser = true;
-    description = "Kioks user";
-    extraGroups = [ "wheel" ];
-    hashedPassword = KIOSK_HASHED_PASSWORD;
-    uid = 1000;
+  # EFI Boot
+  boot.loader = {
+    systemd-boot.enable = true;
+    efi.canTouchEfiVariables = true;
   };
 
-
+  # Plymouth
   boot.plymouth.enable = true;
   boot.plymouth.logo = pkgs.fetchurl {
-          url = "https://storage.zgrate.ovh/znerd-small.png";
-          sha256 = "e8a692068c9ce6ccfe40186ca0e0096d966205b70f413c309ff8051e98e2592e";
-        };
+    url = "https://storage.zgrate.ovh/znerd-small.png";
+    sha256 = "e8a692068c9ce6ccfe40186ca0e0096d966205b70f413c309ff8051e98e2592e";
+  };
 
+  # Optimise storage
+  nix.settings.auto-optimise-store = true;
 
-  environment.systemPackages = with pkgs; [
-    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-    wget
-    mpv
-    firefox
-    socat
-    python311
-    git
-    htop
-  ];
+  # Networking
+  systemd.network.wait-online.anyInterface = true;
+  networking = {
+    hostName = HOSTNAME;
+    wireless = {
+      enable = true;
+      networks = NETWORK_CONFIGURATION;
+    };
+    dhcpcd.wait = "if-carrier-up";
+  };
 
-
-    # Use the systemd-boot EFI boot loader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-
-  networking.hostName = HOSTNAME; # Define your hostname.
-  # Pick only one of the below networking options.
-  networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
-  #networking.networkmanager.enable = true;  # Easiest to use and most distros use this by default.
-
-
-  # Set your time zone.
+  # Time zone
   time.timeZone = "Europe/Warsaw";
 
+  # User accounts
+  users.groups.kiosk.gid = 1000;
+  users.users.kiosk = {
+    uid = 1000;
+    group = "kiosk";
+    description = "Kiosk user";
+    isNormalUser = true;
+    extraGroups = [ "wheel" ];
+    hashedPassword = KIOSK_HASHED_PASSWORD;
+  };
 
-  # Enable the X11 windowing system.
-  # services.xserver.enable = true;
-
-
+  # Packages installed
   nixpkgs.config.allowUnfree = true;
 
+  environment.systemPackages = with pkgs; [
+    vim wget mpv firefox socat python311 git htop
+  ];
+
+  # GPU
   nixpkgs.config.packageOverrides = pkgs: {
     vaapiIntel = pkgs.vaapiIntel.override { enableHybridCodec = true; };
   };
@@ -105,19 +98,12 @@ in
     ];
   };
 
-  services.zerotierone.enable = true;
-  services.zerotierone.joinNetworks = [ZERO_TIER_NETWORK];
-
-
-  services.cage.enable = true;
-  services.cage.user = "kiosk";
-
-  # Enable sound.
+  # Sound
   sound.enable = true;
   hardware.pulseaudio.enable = true;
-
   nixpkgs.config.pulseaudio = true;
 
+  # Security
   security.polkit.extraConfig = '' 
     polkit.addRule(function(action, subject) {
       if (subject.isInGroup("wheel")) {
@@ -131,19 +117,28 @@ in
     wheelNeedsPassword = false;
   };
 
-
-  # Enable the OpenSSH daemon.
+  # OpenSSH
   services.openssh.enable = true;
 
-  networking.dhcpcd.wait = "if-carrier-up";
+  # ZeroTier
+  services.zerotierone = {
+    enable = true;
+    joinNetworks = [ZERO_TIER_NETWORK];
+  };
 
-  systemd.network.wait-online.anyInterface = true;
+  # Cage
+  services.cage = {
+    enable = true;
+    user = "kiosk";
+    program = "${screenPythonEnv}/bin/python /usr/script.py";
+  };
 
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
+  # Prometheus Node Exporter
+  services.prometheus.exporters.node = {
+    enable = true;
+    openFirewall = true;
+    extraFlags = [ "--collector.filesystem.ignored-mount-points='^/(sys|proc|dev|host|etc|snap|var/lib/docker/.+)($$|/)'" "--collector.filesystem.ignored-fs-types='^(nfs.*|tmpfs|autofs|binfmt_misc|cgroup|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|sysfs|tracefs)$'" ];
+  };
 
   # Copy the NixOS configuration file and link it from the resulting system
   # (/run/current-system/configuration.nix). This is useful in case you
