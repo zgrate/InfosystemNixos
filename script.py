@@ -18,6 +18,11 @@ interrupt = True
 last_response = None
 current_running_process = None
 
+vlc_player_process = None
+
+VLC_EXECUTABLE = 'cvlc'
+VLC_ARGS = '-vvv'
+
 
 def build_address(command):
     if command == "screen":
@@ -87,14 +92,32 @@ def execute_command():
     current_running_process.spawn_process_keep_alive()
 
 
+def play_background_music():
+    global vlc_player_process
+
+    if vlc_player_process:
+        vlc_player_process.terminate()
+
+    if last_response['background_audio_stream'] is not None:
+        vlc_player_process = RunningProcess(VLC_EXECUTABLE, VLC_ARGS + " " + str(last_response['background_audio_stream']))
+        vlc_player_process.spawn_process_keep_alive()
+
+
 while interrupt:
     try:
         res = request_status()
         if res:
             res_json = res.json()
             if last_response != res_json:
+                print("new config!")
+                old = last_response
                 last_response = res_json
-                execute_command()
+                if old is None or last_response['command'] != old['command']:
+                    print("Command changed")
+                    execute_command()
+
+                if old is None or last_response['background_audio_stream'] != old['background_audio_stream']:
+                    play_background_music()
 
         sleep(5)
     except (KeyboardInterrupt, SystemExit) as ex:

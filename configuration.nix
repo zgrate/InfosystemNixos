@@ -80,7 +80,7 @@ in
   nixpkgs.config.allowUnfree = true;
 
   environment.systemPackages = with pkgs; [
-    vim wget mpv firefox socat python311 git htop pamix
+    vim wget mpv firefox socat python311 git htop pamix vlc
   ];
 
   # GPU
