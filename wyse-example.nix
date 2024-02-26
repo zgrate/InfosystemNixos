@@ -6,8 +6,8 @@
 
 let 
     HOSTNAME = "bajojajo";
-    SCREEN_IP = "https://screensystem.foxcons.pl/";
-    SCREEN_PASSPHRASE = "ACDKF0H7CY";
+    SCREEN_IP = "https://info.zgrate.ovh/";
+    SETTINGS_DIR = "/home/kiosk/screen_settings.json";
     ZERO_TIER_NETWORK = "e5cd7a9e1c094dca";
     KIOSK_HASHED_PASSWORD = "$6$4Q1YUuy1.m9Wq01t$fHXCAT5AadB5ajpQ4N.E5wBNGm/X3TrA0rzNGjWyPzm9BWQn/QCHbd.pX5y7ZNjc43No.3iFqSTmYB9HztUXD1";
 
@@ -30,17 +30,19 @@ in
   users.users.root.password = "2137";
 
   boot.kernelParams = [ "console=tty0" ];
+  boot.extraModulePackages = with config.boot.kernelPackages; [ rtl8812au ];
 
   environment.sessionVariables = {
     SCREEN_IP = SCREEN_IP;
-    SCREEN_PASSPHRASE = SCREEN_PASSPHRASE;
+    SETTINGS_DIR = SETTINGS_DIR;
   };
 
   # EFI Boot
-  boot.loader = {
-    systemd-boot.enable = true;
-    efi.canTouchEfiVariables = true;
-  };
+  # nixos-generators uses GRUB, do not enable 2 bootloaders at once.
+  #boot.loader = {
+  #  systemd-boot.enable = true;
+  #  efi.canTouchEfiVariables = true;
+  #};
 
   # Plymouth
   boot.plymouth.enable = true;

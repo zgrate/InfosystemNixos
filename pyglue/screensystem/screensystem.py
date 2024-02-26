@@ -1,34 +1,12 @@
-#!/usr/bin/env python3
+import json
 import os
+import random
+import string
 
 import requests
 import threading
 from subprocess import Popen
 from time import sleep
-
-#IP_ADDRESS = os.environ["SCREEN_IP"]
-#PASSPHRASE = os.environ["SCREEN_PASSPHRASE"]
-
-#SCREEN_DETAILS = 'screen/'
-
-#mapping_commands = {
-#}
-
-# Global Variables
-#interrupt = True
-#last_response = None
-#current_running_process = None
-
-#vlc_player_process = None
-
-#VLC_EXECUTABLE = 'cvlc'
-#VLC_ARGS = '-vvv'
-
-
-def build_address(command):
-    if command == "screen":
-        return f"{IP_ADDRESS}{SCREEN_DETAILS}{PASSPHRASE}/"
-    return None
 
 
 class RunningProcess:
@@ -65,53 +43,13 @@ class RunningProcess:
         thread.start()
 
 
-def request_status():
-    try:
-        res = requests.get(build_address("screen"), timeout=5)
-        if res.status_code == 200:
-            return res
-        else:
-            print(res.content)
-            return None
-    except (KeyboardInterrupt, SystemExit) as ex:
-        raise ex
-    except Exception as ex:
-        print("Exception", ex)
-        return None
-
-
-def execute_command():
-    global current_running_process
-    if current_running_process:
-        current_running_process.terminate()
-
-    cmd = last_response['command']['base_command']
-    if cmd in mapping_commands:
-        cmd = mapping_commands[cmd]
-
-    current_running_process = RunningProcess(cmd, last_response['command']['args'])
-    current_running_process.spawn_process_keep_alive()
-
-
-def play_background_music():
-    global vlc_player_process
-
-    if vlc_player_process:
-        vlc_player_process.terminate()
-
-    if last_response['background_audio_stream'] is not None:
-        vlc_player_process = RunningProcess(VLC_EXECUTABLE, VLC_ARGS + " " + str(last_response['background_audio_stream']))
-        vlc_player_process.spawn_process_keep_alive()
-
-def main():
-    IP_ADDRESS = os.environ["SCREEN_IP"]
-    PASSPHRASE = os.environ["SCREEN_PASSPHRASE"]
-
+class ScreenScript:
     SCREEN_DETAILS = 'screen/'
 
     mapping_commands = {
     }
 
+    settings = None
     # Global Variables
     interrupt = True
     last_response = None
@@ -122,23 +60,114 @@ def main():
     VLC_EXECUTABLE = 'cvlc'
     VLC_ARGS = '-vvv'
 
-    while interrupt:
+    def __init__(self, ip_add, settings_path):
+        self.IP_ADDRESS = ip_add
+        self.settings_file = settings_path
+        self.settings = self.read_from_file()
+
+    def build_address(self, command):
+        if command == "screen":
+            return f"{self.IP_ADDRESS}{self.SCREEN_DETAILS}{self.settings['passphrase']}/"
+        elif command == "generate":
+            return f"{self.IP_ADDRESS}generate/{''.join(random.sample(string.ascii_letters, 5))}/"
+
+        return None
+
+    def request_status(self):
         try:
-            res = request_status()
-            if res:
-                res_json = res.json()
-                if last_response != res_json:
-                    print("new config!")
-                    old = last_response
-                    last_response = res_json
-                    if old is None or last_response['command'] != old['command']:
-                        print("Command changed")
-                        execute_command()
-
-                    if old is None or last_response['background_audio_stream'] != old['background_audio_stream']:
-                        play_background_music()
-
-            sleep(5)
+            res = requests.get(self.build_address("screen"), timeout=5)
+            if res.status_code == 200:
+                return res
+            else:
+                print(res.content)
+                return None
         except (KeyboardInterrupt, SystemExit) as ex:
-            print("Exiting! Thanks for watching!")
-            interrupt = False
+            raise ex
+        except Exception as ex:
+            print("Exception", ex)
+            return None
+
+    def request_generate(self):
+        try:
+            res = requests.post(self.build_address("generate"), timeout=5)
+            if res.status_code == 200:
+                return res
+            else:
+                print(res.content)
+                return None
+        except (KeyboardInterrupt, SystemExit) as ex:
+            raise ex
+        except Exception as ex:
+            print("Exception", ex)
+            return None
+
+    def execute_command(self):
+        if self.current_running_process:
+            self.current_running_process.terminate()
+
+        cmd = self.last_response['command']['base_command']
+        if cmd in self.mapping_commands:
+            cmd = self.mapping_commands[cmd]
+
+        self.current_running_process = RunningProcess(cmd, self.last_response['command']['args'])
+        self.current_running_process.spawn_process_keep_alive()
+
+    def play_background_music(self):
+
+        if self.vlc_player_process:
+            self.vlc_player_process.terminate()
+
+        if self.last_response['background_audio_stream'] is not None:
+            self.vlc_player_process = RunningProcess(self.VLC_EXECUTABLE,
+                                                     self.VLC_ARGS + " " + str(
+                                                         self.last_response['background_audio_stream']))
+            self.vlc_player_process.spawn_process_keep_alive()
+
+    def run(self):
+        while self.interrupt:
+            try:
+                res = self.request_status()
+                if res:
+                    res_json = res.json()
+                    if self.last_response != res_json:
+                        print("new config!")
+                        old = self.last_response
+                        self.last_response = res_json
+                        if self.settings['name'] != self.last_response['name']:
+                            self.settings['name'] = self.last_response['name']
+                            self.save_settings(self.settings)
+
+                        if old is None or self.last_response['command'] != old['command']:
+                            print("Command changed")
+                            self.execute_command()
+
+                        if old is None or self.last_response['background_audio_stream'] != old[
+                            'background_audio_stream']:
+                            self.play_background_music()
+
+                sleep(5)
+            except (KeyboardInterrupt, SystemExit) as ex:
+                print("Exiting! Thanks for watching!")
+                self.interrupt = False
+
+    def save_settings(self, settings):
+        with open(self.settings_file, "w", encoding="utf-8") as settings_file_stream:
+            json.dump(settings, settings_file_stream)
+
+    def read_from_file(self):
+        if os.path.exists(self.settings_file):
+            with open(self.settings_file, "r", encoding="utf-8") as settings_file_stream:
+                return json.load(settings_file_stream)
+        else:
+            settings = self.request_generate().json()
+            print(settings)
+            if settings is None:
+                exit(0)
+
+            self.save_settings(settings)
+            return settings
+
+if __name__ == '__main__':
+    ip_add = os.environ['SCREEN_IP'] if "SCREEN_IP" in os.environ else "https://info.zgrate.ovh/"
+    settings_path = os.environ['SETTINGS_DIR'] if "SETTINGS_DIR" in os.environ else "/home/kiosk/screen_settings.json"
+    ScreenScript(ip_add, settings_path).run()
