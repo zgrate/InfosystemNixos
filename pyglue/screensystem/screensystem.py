@@ -167,7 +167,7 @@ class ScreenScript:
             self.save_settings(settings)
             return settings
 
-if __name__ == '__main__':
+def main():
     ip_add = os.environ['SCREEN_IP'] if "SCREEN_IP" in os.environ else "https://info.zgrate.ovh/"
     settings_path = os.environ['SETTINGS_DIR'] if "SETTINGS_DIR" in os.environ else "/home/kiosk/screen_settings.json"
     ScreenScript(ip_add, settings_path).run()
