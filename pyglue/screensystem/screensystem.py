@@ -159,12 +159,11 @@ class ScreenScript:
             with open(self.settings_file, "r", encoding="utf-8") as settings_file_stream:
                 return json.load(settings_file_stream)
         else:
-            settings = self.request_generate().json()
-            print(settings)
-            if settings is None:
-                exit(0)
+            while (settings := self.request_generate()) is None:
+                sleep(1)
 
-            self.save_settings(settings)
+            print(settings)
+            self.save_settings(settings.json())
             return settings
 
 def main():
